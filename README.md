@@ -18,6 +18,7 @@ Inboxes treat every unread email as equally urgent. Important requests — a dea
 - **Always explain why.** Every highlight carries plain-language reasons ("Due tomorrow, 5:00 PM", "Asks you a question", "Important sender"), so the AI's choices are easy to trust or overrule.
 - **One clear next step.** Each highlight leads with a single action — *Reply* or *Review* — with *Add to to-do* and *Mark done* as quieter options.
 - **The user stays in control.** Suggested replies are editable and must be approved; Glance never sends email. Highlights can be dismissed ("Not now") or hidden for the day ("Done for now"), and every one of those actions can be undone.
+- **Clutter has an exit.** Promotions are separated from real email, and the senders you never open are suggested for unsubscribing — with the evidence ("About 5 emails a week · Never opened") right next to the button.
 - **Calm by default.** Unread counts are shown as quiet text, not alarming badges. Colour is reserved for meaning: blue for AI and selection, red and blue dots for urgent and important email.
 - **Familiar where it matters.** The inbox keeps compact, scannable rows, checkboxes, bulk actions and keyboard shortcuts that people already know from desktop email.
 
@@ -28,7 +29,8 @@ Inboxes treat every unread email as equally urgent. Important requests — a dea
 3. **Reply** — open a highlighted email, edit the suggested reply, and approve it.
 4. **Done for now** — put today's highlights away and go straight to the inbox; bring them back from *Today* whenever you like.
 5. **Inbox** — priority tabs, search (press `/`), select-all, bulk archive and mark-as-read.
-6. **Settings** — change your preferences, replay the intro, or reset the demo.
+6. **Promotions** — promotional email lives in its own mailbox, never in your highlights or unread totals. *Manage subscriptions* shows how often each sender emails you and when you last opened one, and unsubscribes in one click — or from every sender you never open at once.
+7. **Settings** — change your preferences, replay the intro, or reset the demo.
 
 Your choices, to-dos and drafts are saved in your browser, so the demo picks up where you left off.
 

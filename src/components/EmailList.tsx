@@ -14,6 +14,7 @@ interface EmailListProps {
   isFiltered: boolean
   inArchive: boolean
   tabs?: ReactNode
+  banner?: ReactNode
   onSelect: (id: string) => void
   onCheck: (id: string, checked: boolean) => void
   onCheckAll: (checked: boolean) => void
@@ -34,6 +35,7 @@ export function EmailList({
   isFiltered,
   inArchive,
   tabs,
+  banner,
   onSelect,
   onCheck,
   onCheckAll,
@@ -109,6 +111,7 @@ export function EmailList({
       </div>
 
       {tabs}
+      {banner}
 
       {emails.length > 0 ? (
         <ul className="email-list">

@@ -42,7 +42,13 @@ export function buildHighlights(
   const important = new Set(preferences.importantSenders)
 
   const scored = emails
-    .filter((email) => !email.archived && email.category !== 'newsletter' && !dismissedIds.has(email.id))
+    .filter(
+      (email) =>
+        !email.archived &&
+        email.category !== 'newsletter' &&
+        email.category !== 'promotion' &&
+        !dismissedIds.has(email.id),
+    )
     .filter((email) => hasPendingActions(email) || (important.has(email.sender.email) && email.unread))
     .map((email) => {
       const reasons: HighlightReason[] = []

@@ -1,9 +1,9 @@
 export type Priority = 'urgent' | 'important' | 'normal'
 
-export type Category = 'work' | 'personal' | 'updates' | 'newsletter'
+export type Category = 'work' | 'personal' | 'updates' | 'newsletter' | 'promotion'
 
 /** Mailbox lists in the sidebar. */
-export type ListView = 'inbox' | 'action' | 'newsletters' | 'archive'
+export type ListView = 'inbox' | 'action' | 'newsletters' | 'promotions' | 'archive'
 
 /** Everything the main area can show: the daily home or a mailbox list. */
 export type View = 'home' | ListView
@@ -45,6 +45,15 @@ export interface Email {
   asksYou?: string
   /** Mock AI-suggested reply. Never sent — the user edits and approves it. */
   suggestedReply?: string
+  /** Mock mailing-list stats for promotional senders. */
+  promo?: PromoStats
+}
+
+export interface PromoStats {
+  /** Roughly how many emails this sender sends per week. */
+  perWeek: number
+  /** Days since the user last opened one of their emails; null if never. */
+  lastOpenedDaysAgo: number | null
 }
 
 /** What the user told onboarding matters most. */

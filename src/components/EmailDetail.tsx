@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { formatDue, formatFullDate, isDueSoon } from '../lib/format'
 import type { Highlight } from '../lib/highlights'
+import { describeFrequency, describeLastOpened } from '../lib/promotions'
+import type { Subscription } from '../lib/promotions'
 import type { Email, ReplyDraft } from '../types'
 import { AskEmail } from './AskEmail'
 import { Avatar } from './Avatar'
@@ -23,6 +25,9 @@ interface EmailDetailProps {
   onAddTodo: (id: string) => void
   onDismissHighlight: (id: string) => void
   onDraftChange: (id: string, draft: ReplyDraft) => void
+  subscription?: Subscription
+  onUnsubscribe: (senderEmails: string[]) => void
+  onResubscribe: (senderEmail: string) => void
 }
 
 export function EmailDetail({
@@ -39,6 +44,9 @@ export function EmailDetail({
   onAddTodo,
   onDismissHighlight,
   onDraftChange,
+  subscription,
+  onUnsubscribe,
+  onResubscribe,
 }: EmailDetailProps) {
   const headingRef = useRef<HTMLHeadingElement>(null)
   const emailId = email?.id
@@ -95,6 +103,31 @@ export function EmailDetail({
                 </time>
               </div>
             </header>
+
+            {subscription && (
+              <div className={`unsub-banner${subscription.unsubscribed ? ' is-done' : ''}`}>
+                <Icon name={subscription.unsubscribed ? 'check' : 'bellOff'} size={18} />
+                <p className="unsub-banner__text">
+                  {subscription.unsubscribed ? (
+                    <>You’re unsubscribed from {subscription.sender.name}.</>
+                  ) : (
+                    <>
+                      <strong>{describeLastOpened(subscription.lastOpenedDaysAgo)}.</strong>{' '}
+                      {describeFrequency(subscription.perWeek)} from {subscription.sender.name}.
+                    </>
+                  )}
+                </p>
+                {subscription.unsubscribed ? (
+                  <button type="button" className="button button--ghost button--sm" onClick={() => onResubscribe(subscription.sender.email)}>
+                    Resubscribe
+                  </button>
+                ) : (
+                  <button type="button" className="button button--sm" onClick={() => onUnsubscribe([subscription.sender.email])}>
+                    Unsubscribe
+                  </button>
+                )}
+              </div>
+            )}
 
             {highlight && (
               <p className="why-note">

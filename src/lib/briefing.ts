@@ -15,7 +15,8 @@ const dueTime = (email: Email) => email.deadline?.due.getTime() ?? Number.POSITI
 
 /** Builds the "Catch me up" briefing from the current mock inbox state. */
 export function buildBriefing(emails: Email[], now = new Date()): Briefing {
-  const active = emails.filter((email) => !email.archived)
+  // Promotions never count toward catching up.
+  const active = emails.filter((email) => !email.archived && email.category !== 'promotion')
 
   const newEmails = sortNewestFirst(active.filter((email) => email.unread))
 

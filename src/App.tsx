@@ -7,6 +7,7 @@ import { Onboarding } from './components/Onboarding'
 import { PriorityFilters } from './components/PriorityFilters'
 import { SettingsDialog } from './components/SettingsDialog'
 import { Sidebar } from './components/Sidebar'
+import { SubscriptionManager } from './components/SubscriptionManager'
 import { Toast } from './components/Toast'
 import type { ToastMessage } from './components/Toast'
 import { TopBar } from './components/TopBar'
@@ -22,8 +23,10 @@ import {
   matchesView,
   sortNewestFirst,
 } from './lib/filters'
+import { pluralize } from './lib/format'
 import { buildHighlights, highlightFor } from './lib/highlights'
 import { peopleFrom } from './lib/preferences'
+import { buildSubscriptions } from './lib/promotions'
 import {
   DEFAULT_PREFERENCES,
   clearState,
@@ -55,6 +58,7 @@ export default function App() {
   const [dismissedIds, setDismissedIds] = useState<ReadonlySet<string>>(() => new Set(saved.dismissedIds))
   const [drafts, setDrafts] = useState<Record<string, ReplyDraft>>(saved.drafts ?? {})
   const [highlightsHiddenOn, setHighlightsHiddenOn] = useState(saved.highlightsHiddenOn)
+  const [unsubscribed, setUnsubscribed] = useState<ReadonlySet<string>>(() => new Set(saved.unsubscribed))
   const highlightsHidden = highlightsHiddenOn === todayKey()
 
   // Once today's highlights are put away, the app opens straight to the inbox until tomorrow.
@@ -84,8 +88,9 @@ export default function App() {
       drafts,
       emails: serializeEmails(emails),
       highlightsHiddenOn,
+      unsubscribed: [...unsubscribed],
     })
-  }, [onboarded, preferences, todoIds, dismissedIds, drafts, emails, highlightsHiddenOn])
+  }, [onboarded, preferences, todoIds, dismissedIds, drafts, emails, highlightsHiddenOn, unsubscribed])
 
   const listView: ListView = view === 'home' ? 'inbox' : view
   const viewEmails = useMemo(
@@ -101,9 +106,11 @@ export default function App() {
   const unreadCounts = useMemo(() => countUnreadByView(emails), [emails])
   const highlights = useMemo(() => buildHighlights(emails, preferences, dismissedIds), [emails, preferences, dismissedIds])
   const people = useMemo(() => peopleFrom(initialEmails), [])
+  const subscriptions = useMemo(() => buildSubscriptions(emails, unsubscribed), [emails, unsubscribed])
   const selectedEmail = emails.find((email) => email.id === selectedId) ?? null
 
-  const unreadTotal = emails.filter((email) => !email.archived && email.unread).length
+  // Promotions never count toward "new email" totals.
+  const unreadTotal = emails.filter((email) => !email.archived && email.unread && email.category !== 'promotion').length
   const isFiltered = query.trim() !== '' || priority !== 'all'
   const viewConfig = VIEWS.find((item) => item.id === listView) ?? VIEWS[0]
 
@@ -257,6 +264,31 @@ export default function App() {
     changeView('home')
   }
 
+  // ---- Promotions ----
+
+  function unsubscribe(senderEmails: string[]) {
+    const senders = new Set(senderEmails)
+    const archivedIds = emails
+      .filter((email) => email.category === 'promotion' && !email.archived && senders.has(email.sender.email))
+      .map((email) => email.id)
+    const names = subscriptions.filter((item) => senders.has(item.sender.email)).map((item) => item.sender.name)
+
+    setUnsubscribed((current) => new Set([...current, ...senderEmails]))
+    if (archivedIds.length > 0) setArchived(archivedIds, true)
+
+    const who = names.length === 1 ? names[0] : `${names.length} senders`
+    const archivedNote = archivedIds.length > 0 ? ` and archived ${pluralize(archivedIds.length, 'email')}` : ''
+    showToast(`Unsubscribed from ${who}${archivedNote}`, () => {
+      setUnsubscribed((current) => new Set([...current].filter((item) => !senders.has(item))))
+      const restore = new Set(archivedIds)
+      setEmails((current) => current.map((email) => (restore.has(email.id) ? { ...email, archived: false } : email)))
+    })
+  }
+
+  function resubscribe(senderEmail: string) {
+    setUnsubscribed((current) => new Set([...current].filter((item) => item !== senderEmail)))
+  }
+
   function clearCompletedTodos() {
     setTodoIds(
       (current) =>
@@ -313,6 +345,7 @@ export default function App() {
     setDismissedIds(new Set())
     setDrafts({})
     setHighlightsHiddenOn(undefined)
+    setUnsubscribed(new Set())
     setSelectedId(null)
     setSettingsOpen(false)
     setOnboarded(false)
@@ -382,6 +415,8 @@ export default function App() {
             }
             inboxCount={inboxEmails.length}
             newsletterUnread={unreadCounts.newsletters}
+            promotionUnread={unreadCounts.promotions}
+            unsubscribeSuggestions={subscriptions.filter((item) => item.suggested && !item.unsubscribed).length}
             actionCount={emails.filter((email) => matchesView(email, 'action')).length}
             onOpen={openEmail}
             onReply={replyTo}
@@ -402,7 +437,16 @@ export default function App() {
             emptyMessage={viewConfig.emptyMessage}
             isFiltered={isFiltered}
             inArchive={view === 'archive'}
-            tabs={<PriorityFilters value={priority} counts={priorityCounts} onChange={setPriority} />}
+            tabs={
+              view === 'promotions' ? undefined : (
+                <PriorityFilters value={priority} counts={priorityCounts} onChange={setPriority} />
+              )
+            }
+            banner={
+              view === 'promotions' && !query.trim() ? (
+                <SubscriptionManager subscriptions={subscriptions} onUnsubscribe={unsubscribe} onResubscribe={resubscribe} />
+              ) : undefined
+            }
             onSelect={openEmail}
             onCheck={checkEmail}
             onCheckAll={checkAll}
@@ -435,6 +479,13 @@ export default function App() {
         onAddTodo={addTodo}
         onDismissHighlight={dismissHighlight}
         onDraftChange={changeDraft}
+        subscription={
+          selectedEmail?.category === 'promotion'
+            ? subscriptions.find((item) => item.sender.email === selectedEmail.sender.email)
+            : undefined
+        }
+        onUnsubscribe={unsubscribe}
+        onResubscribe={resubscribe}
       />
 
       <CatchUpDialog

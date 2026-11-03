@@ -17,6 +17,8 @@ interface HomeProps {
   otherNewCount: number
   inboxCount: number
   newsletterUnread: number
+  promotionUnread: number
+  unsubscribeSuggestions: number
   actionCount: number
   onOpen: (id: string) => void
   onReply: (id: string) => void
@@ -46,6 +48,8 @@ export function Home({
   otherNewCount,
   inboxCount,
   newsletterUnread,
+  promotionUnread,
+  unsubscribeSuggestions,
   actionCount,
   onOpen,
   onReply,
@@ -206,6 +210,18 @@ export function Home({
               label="Newsletters"
               meta={newsletterUnread > 0 ? `${newsletterUnread} unread · read when you have time` : 'All read'}
               onClick={() => onBrowse('newsletters')}
+            />
+            <BrowseRow
+              icon="tag"
+              label="Promotions"
+              meta={[
+                promotionUnread > 0 ? `${promotionUnread} unread` : 'All read',
+                unsubscribeSuggestions > 0 &&
+                  `${unsubscribeSuggestions} you could unsubscribe from`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+              onClick={() => onBrowse('promotions')}
             />
           </ul>
           <button type="button" className="button button--pill home__browse" onClick={() => onBrowse('inbox')}>

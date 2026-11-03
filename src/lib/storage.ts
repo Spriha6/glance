@@ -22,6 +22,8 @@ export interface StoredState {
   emails: Record<string, StoredEmail>
   /** Local date ("2026-11-03") the user hid "Needs your attention"; they come back the next day. */
   highlightsHiddenOn?: string
+  /** Promotional sender addresses the user unsubscribed from (demo only). */
+  unsubscribed?: string[]
 }
 
 /** Today's local date as YYYY-MM-DD. */
