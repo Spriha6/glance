@@ -9,10 +9,11 @@ interface ReplyDraftEditorProps {
   draft: ReplyDraft | undefined
   autoFocus: boolean
   onChange: (draft: ReplyDraft) => void
+  onOpenInCompose: (text: string) => void
 }
 
 /** Editable AI reply suggestion. Approving saves it as a draft — nothing is ever sent. */
-export function ReplyDraftEditor({ email, draft, autoFocus, onChange }: ReplyDraftEditorProps) {
+export function ReplyDraftEditor({ email, draft, autoFocus, onChange, onOpenInCompose }: ReplyDraftEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const sectionRef = useRef<HTMLElement>(null)
   const [copied, setCopied] = useState(false)
@@ -48,10 +49,14 @@ export function ReplyDraftEditor({ email, draft, autoFocus, onChange }: ReplyDra
         <>
           <p className="reply-draft__status" role="status">
             <Icon name="check" size={15} />
-            Approved and saved as a draft. {APP_NAME} never sends email — copy it into your email app when you’re ready.
+            Approved. {APP_NAME} won’t send anything on its own — open it in Compose to review and send it yourself.
           </p>
           <div className="reply-draft__preview">{text}</div>
           <div className="reply-draft__actions">
+            <button type="button" className="button button--primary button--sm" onClick={() => onOpenInCompose(text)}>
+              <Icon name="pencil" size={15} />
+              Open in Compose
+            </button>
             <button type="button" className="button button--sm" onClick={copy}>
               <Icon name={copied ? 'check' : 'copy'} size={15} />
               {copied ? 'Copied' : 'Copy text'}

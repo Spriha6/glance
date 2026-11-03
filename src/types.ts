@@ -1,9 +1,9 @@
 export type Priority = 'urgent' | 'important' | 'normal'
 
-export type Category = 'work' | 'personal' | 'updates' | 'newsletter' | 'promotion'
+export type Category = 'work' | 'personal' | 'updates' | 'newsletter' | 'promotion' | 'sent'
 
 /** Mailbox lists in the sidebar. */
-export type ListView = 'inbox' | 'action' | 'newsletters' | 'promotions' | 'archive'
+export type ListView = 'inbox' | 'action' | 'newsletters' | 'promotions' | 'sent' | 'archive'
 
 /** Everything the main area can show: the daily home or a mailbox list. */
 export type View = 'home' | ListView
@@ -47,6 +47,15 @@ export interface Email {
   suggestedReply?: string
   /** Mock mailing-list stats for promotional senders. */
   promo?: PromoStats
+  /** Recipient, for messages the user sent ("Priya Raman <priya@…>"). */
+  to?: string
+}
+
+/** A message being written in the Compose window. */
+export interface ComposeDraft {
+  to: string
+  subject: string
+  body: string
 }
 
 export interface PromoStats {

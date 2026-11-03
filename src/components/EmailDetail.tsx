@@ -3,7 +3,8 @@ import { formatDue, formatFullDate, isDueSoon } from '../lib/format'
 import type { Highlight } from '../lib/highlights'
 import { describeFrequency, describeLastOpened } from '../lib/promotions'
 import type { Subscription } from '../lib/promotions'
-import type { Email, ReplyDraft } from '../types'
+import { recipientName } from '../lib/compose'
+import type { ComposeDraft, Email, ReplyDraft } from '../types'
 import { AskEmail } from './AskEmail'
 import { Avatar } from './Avatar'
 import { AiSpark } from './Brand'
@@ -28,6 +29,7 @@ interface EmailDetailProps {
   subscription?: Subscription
   onUnsubscribe: (senderEmails: string[]) => void
   onResubscribe: (senderEmail: string) => void
+  onCompose: (draft: ComposeDraft) => void
 }
 
 export function EmailDetail({
@@ -47,6 +49,7 @@ export function EmailDetail({
   subscription,
   onUnsubscribe,
   onResubscribe,
+  onCompose,
 }: EmailDetailProps) {
   const headingRef = useRef<HTMLHeadingElement>(null)
   const emailId = email?.id
@@ -57,6 +60,7 @@ export function EmailDetail({
   }, [isDrawer, emailId, focusReply])
 
   const hasOpenTasks = email?.actionItems.some((item) => !item.done) ?? false
+  const isSent = email?.category === 'sent'
 
   return (
     <aside className={`detail${email ? ' is-open' : ''}`} aria-label="Email details">
@@ -96,7 +100,9 @@ export function EmailDetail({
                     {email.sender.name}
                     {email.sender.organization && <span className="sender__org"> · {email.sender.organization}</span>}
                   </p>
-                  <p className="sender__email">{email.sender.email}</p>
+                  <p className="sender__email">
+                    {email.to ? `to ${recipientName(email.to)}` : email.sender.email}
+                  </p>
                 </div>
                 <time className="sender__date" dateTime={email.receivedAt.toISOString()}>
                   {formatFullDate(email.receivedAt)}
@@ -141,75 +147,86 @@ export function EmailDetail({
               </p>
             )}
 
-            <section className="summary" aria-labelledby="summary-title">
-              <h3 id="summary-title" className="section-title section-title--accent">
-                <AiSpark size={14} />
-                Summary
-                <span className="summary__tag">AI · demo</span>
-              </h3>
-              <p className="summary__text">{email.summary}</p>
-              {email.deadline && (
-                <p className={`deadline-chip${isDueSoon(email.deadline.due) ? ' is-soon' : ''}`}>
-                  <Icon name="clock" size={14} />
-                  <span>
-                    {email.deadline.label} · <strong>{formatDue(email.deadline.due)}</strong>
-                  </span>
-                </p>
-              )}
-            </section>
+            {!isSent && (
+              <>
+                <section className="summary" aria-labelledby="summary-title">
+                  <h3 id="summary-title" className="section-title section-title--accent">
+                    <AiSpark size={14} />
+                    Summary
+                    <span className="summary__tag">AI · demo</span>
+                  </h3>
+                  <p className="summary__text">{email.summary}</p>
+                  {email.deadline && (
+                    <p className={`deadline-chip${isDueSoon(email.deadline.due) ? ' is-soon' : ''}`}>
+                      <Icon name="clock" size={14} />
+                      <span>
+                        {email.deadline.label} · <strong>{formatDue(email.deadline.due)}</strong>
+                      </span>
+                    </p>
+                  )}
+                </section>
 
-            <section aria-labelledby="tasks-title">
-              <h3 id="tasks-title" className="section-title">
-                Suggested next steps
-                {email.actionItems.length > 0 && (
-                  <span className="section-title__meta">
-                    {email.actionItems.filter((item) => item.done).length}/{email.actionItems.length} done
-                  </span>
+                <section aria-labelledby="tasks-title">
+                  <h3 id="tasks-title" className="section-title">
+                    Suggested next steps
+                    {email.actionItems.length > 0 && (
+                      <span className="section-title__meta">
+                        {email.actionItems.filter((item) => item.done).length}/{email.actionItems.length} done
+                      </span>
+                    )}
+                  </h3>
+                  {email.actionItems.length > 0 ? (
+                    <ul className="tasks">
+                      {email.actionItems.map((item) => (
+                        <li key={item.id} className="task">
+                          <label>
+                            <input type="checkbox" checked={item.done} onChange={() => onToggleTask(email.id, item.id)} />
+                            <span>{item.text}</span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="muted-note">Nothing to do — this one is just for your information.</p>
+                  )}
+                  {hasOpenTasks &&
+                    (onTodo ? (
+                      <p className="todo-note">
+                        <Icon name="check" size={14} />
+                        On your to-do list
+                      </p>
+                    ) : (
+                      <button type="button" className="button button--sm tasks__add" onClick={() => onAddTodo(email.id)}>
+                        <Icon name="listPlus" size={15} />
+                        Add to to-do
+                      </button>
+                    ))}
+                </section>
+
+                {email.suggestedReply && (
+                  <ReplyDraftEditor
+                    key={`reply-${email.id}`}
+                    email={{ ...email, suggestedReply: email.suggestedReply }}
+                    draft={draft}
+                    autoFocus={focusReply}
+                    onChange={(next) => onDraftChange(email.id, next)}
+                    onOpenInCompose={(text) =>
+                      onCompose({
+                        to: `${email.sender.name} <${email.sender.email}>`,
+                        subject: email.subject.startsWith('Re:') ? email.subject : `Re: ${email.subject}`,
+                        body: text,
+                      })
+                    }
+                  />
                 )}
-              </h3>
-              {email.actionItems.length > 0 ? (
-                <ul className="tasks">
-                  {email.actionItems.map((item) => (
-                    <li key={item.id} className="task">
-                      <label>
-                        <input type="checkbox" checked={item.done} onChange={() => onToggleTask(email.id, item.id)} />
-                        <span>{item.text}</span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="muted-note">Nothing to do — this one is just for your information.</p>
-              )}
-              {hasOpenTasks &&
-                (onTodo ? (
-                  <p className="todo-note">
-                    <Icon name="check" size={14} />
-                    On your to-do list
-                  </p>
-                ) : (
-                  <button type="button" className="button button--sm tasks__add" onClick={() => onAddTodo(email.id)}>
-                    <Icon name="listPlus" size={15} />
-                    Add to to-do
-                  </button>
-                ))}
-            </section>
 
-            {email.suggestedReply && (
-              <ReplyDraftEditor
-                key={`reply-${email.id}`}
-                email={{ ...email, suggestedReply: email.suggestedReply }}
-                draft={draft}
-                autoFocus={focusReply}
-                onChange={(next) => onDraftChange(email.id, next)}
-              />
+                <AskEmail key={email.id} email={email} />
+              </>
             )}
-
-            <AskEmail key={email.id} email={email} />
 
             <section aria-labelledby="message-title">
               <h3 id="message-title" className="section-title">
-                Original message
+                {isSent ? 'Message' : 'Original message'}
               </h3>
               <div className="message">
                 {email.body.map((paragraph, index) => (

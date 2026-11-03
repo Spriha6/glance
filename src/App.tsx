@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CatchUpDialog } from './components/CatchUpDialog'
+import { ComposeWindow } from './components/ComposeWindow'
 import { EmailDetail } from './components/EmailDetail'
 import { EmailList } from './components/EmailList'
+import { Icon } from './components/Icon'
 import { Home } from './components/Home'
 import { Onboarding } from './components/Onboarding'
 import { PriorityFilters } from './components/PriorityFilters'
@@ -23,6 +25,7 @@ import {
   matchesView,
   sortNewestFirst,
 } from './lib/filters'
+import { EMPTY_DRAFT, hasContent, sentEmail, storeSent } from './lib/compose'
 import { pluralize } from './lib/format'
 import { buildHighlights, highlightFor } from './lib/highlights'
 import { peopleFrom } from './lib/preferences'
@@ -36,7 +39,7 @@ import {
   serializeEmails,
   todayKey,
 } from './lib/storage'
-import type { Email, ListView, Preferences, PriorityFilter, ReplyDraft, View } from './types'
+import type { ComposeDraft, Email, ListView, Preferences, PriorityFilter, ReplyDraft, View } from './types'
 import './App.css'
 
 // Below this width the detail panel becomes a slide-over drawer (keep in sync with App.css).
@@ -51,7 +54,10 @@ function viewFor(email: Email): ListView {
 
 export default function App() {
   const [saved] = useState(loadState)
-  const [emails, setEmails] = useState<Email[]>(() => restoreEmails(initialEmails, saved.emails))
+  const [emails, setEmails] = useState<Email[]>(() => [
+    ...(saved.sent ?? []).map(sentEmail),
+    ...restoreEmails(initialEmails, saved.emails),
+  ])
   const [onboarded, setOnboarded] = useState(saved.onboarded ?? false)
   const [preferences, setPreferences] = useState<Preferences>(saved.preferences ?? DEFAULT_PREFERENCES)
   const [todoIds, setTodoIds] = useState<ReadonlySet<string>>(() => new Set(saved.todoIds))
@@ -59,6 +65,8 @@ export default function App() {
   const [drafts, setDrafts] = useState<Record<string, ReplyDraft>>(saved.drafts ?? {})
   const [highlightsHiddenOn, setHighlightsHiddenOn] = useState(saved.highlightsHiddenOn)
   const [unsubscribed, setUnsubscribed] = useState<ReadonlySet<string>>(() => new Set(saved.unsubscribed))
+  const [composeDraft, setComposeDraft] = useState<ComposeDraft | null>(null)
+  const [composeOpen, setComposeOpen] = useState(false)
   const highlightsHidden = highlightsHiddenOn === todayKey()
 
   // Once today's highlights are put away, the app opens straight to the inbox until tomorrow.
@@ -89,6 +97,7 @@ export default function App() {
       emails: serializeEmails(emails),
       highlightsHiddenOn,
       unsubscribed: [...unsubscribed],
+      sent: emails.filter((email) => email.category === 'sent').map(storeSent),
     })
   }, [onboarded, preferences, todoIds, dismissedIds, drafts, emails, highlightsHiddenOn, unsubscribed])
 
@@ -285,6 +294,45 @@ export default function App() {
     })
   }
 
+  // ---- Compose ----
+
+  function openCompose(prefill?: ComposeDraft) {
+    setComposeDraft((current) => prefill ?? current ?? EMPTY_DRAFT)
+    setComposeOpen(true)
+    setNavOpen(false)
+  }
+
+  function closeCompose() {
+    setComposeOpen(false)
+    if (composeDraft && hasContent(composeDraft)) showToast('Draft saved')
+    else setComposeDraft(null)
+  }
+
+  function discardCompose() {
+    const discarded = composeDraft
+    setComposeOpen(false)
+    setComposeDraft(null)
+    if (discarded && hasContent(discarded)) {
+      showToast('Draft discarded', () => {
+        setComposeDraft(discarded)
+        setComposeOpen(true)
+      })
+    }
+  }
+
+  function sendCompose(draft: ComposeDraft) {
+    const message = sentEmail({ ...draft, id: `sent-${Date.now()}`, sentAt: new Date().toISOString() })
+    setEmails((current) => [message, ...current])
+    setComposeOpen(false)
+    setComposeDraft(null)
+    // Like Gmail's "Undo send": pulls the message back into the Compose window.
+    showToast('Message sent', () => {
+      setEmails((current) => current.filter((email) => email.id !== message.id))
+      setComposeDraft(draft)
+      setComposeOpen(true)
+    })
+  }
+
   function resubscribe(senderEmail: string) {
     setUnsubscribed((current) => new Set([...current].filter((item) => item !== senderEmail)))
   }
@@ -346,6 +394,8 @@ export default function App() {
     setDrafts({})
     setHighlightsHiddenOn(undefined)
     setUnsubscribed(new Set())
+    setComposeDraft(null)
+    setComposeOpen(false)
     setSelectedId(null)
     setSettingsOpen(false)
     setOnboarded(false)
@@ -355,7 +405,7 @@ export default function App() {
 
   const dialogOpen = briefingOpen || settingsOpen || introOpen
 
-  // Keyboard shortcuts: "/" focuses search, Escape closes the menu or drawer.
+  // Keyboard shortcuts: "/" focuses search, "c" composes, Escape closes the menu or drawer.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (dialogOpen) return
@@ -364,6 +414,11 @@ export default function App() {
       if (event.key === '/' && !isTyping) {
         event.preventDefault()
         searchRef.current?.focus()
+      }
+      if (event.key === 'c' && !isTyping && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        event.preventDefault()
+        setComposeDraft((current) => current ?? EMPTY_DRAFT)
+        setComposeOpen(true)
       }
       if (event.key === 'Escape') {
         if (navOpen) setNavOpen(false)
@@ -396,6 +451,7 @@ export default function App() {
         open={navOpen}
         onSelectView={changeView}
         onCatchUp={openBriefing}
+        onCompose={() => openCompose()}
         onOpenSettings={openSettings}
       />
       <div className={`nav-backdrop${isMobile && navOpen ? ' is-open' : ''}`} onClick={() => setNavOpen(false)} aria-hidden="true" />
@@ -486,6 +542,7 @@ export default function App() {
         }
         onUnsubscribe={unsubscribe}
         onResubscribe={resubscribe}
+        onCompose={openCompose}
       />
 
       <CatchUpDialog
@@ -512,6 +569,24 @@ export default function App() {
           initialPreferences={preferences}
           onFinish={finishOnboarding}
           onSkip={skipOnboarding}
+        />
+      )}
+
+      {isMobile && !composeOpen && (
+        <button type="button" className="button compose-fab" onClick={() => openCompose()}>
+          <Icon name="pencil" size={20} />
+          Compose
+        </button>
+      )}
+
+      {composeOpen && composeDraft && (
+        <ComposeWindow
+          draft={composeDraft}
+          contacts={people}
+          onChange={setComposeDraft}
+          onSend={sendCompose}
+          onClose={closeCompose}
+          onDiscard={discardCompose}
         />
       )}
 

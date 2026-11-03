@@ -11,6 +11,7 @@ interface SidebarProps {
   open: boolean
   onSelectView: (view: View) => void
   onCatchUp: () => void
+  onCompose: () => void
   onOpenSettings: () => void
 }
 
@@ -22,13 +23,24 @@ export function Sidebar({
   open,
   onSelectView,
   onCatchUp,
+  onCompose,
   onOpenSettings,
 }: SidebarProps) {
   const className = ['sidebar', collapsed && 'is-collapsed', open && 'is-open'].filter(Boolean).join(' ')
 
   return (
     <aside id="sidebar" className={className}>
-      <button type="button" className="button button--primary button--pill catch-up-button" onClick={onCatchUp}>
+      <button type="button" className="button compose-button" onClick={onCompose} aria-label="Compose" title={collapsed ? 'Compose' : undefined}>
+        <Icon name="pencil" size={20} />
+        <span className="compose-button__label">Compose</span>
+      </button>
+
+      <button
+        type="button"
+        className="button catch-up-button"
+        onClick={onCatchUp}
+        title={collapsed ? 'Catch me up' : undefined}
+      >
         <AiSpark size={20} />
         <span className="catch-up-button__label">Catch me up</span>
         {unreadTotal > 0 && (

@@ -1,3 +1,4 @@
+import { recipientName } from '../lib/compose'
 import { formatTimestamp } from '../lib/format'
 import type { Email } from '../types'
 import { Avatar } from './Avatar'
@@ -41,7 +42,7 @@ export function EmailRow({ email, selected, checked, onSelect, onCheck, onToggle
       >
         <Avatar name={email.sender.name} />
         {email.unread && <span className="visually-hidden">Unread. </span>}
-        <span className="email-row__sender">{email.sender.name}</span>
+        <span className="email-row__sender">{email.to ? `To: ${recipientName(email.to)}` : email.sender.name}</span>
         <span className="email-row__content">
           <PriorityDot priority={email.priority} />
           <span className="email-row__subject">{email.subject}</span>

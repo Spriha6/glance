@@ -1,4 +1,5 @@
 import type { Email, Preferences, ReplyDraft } from '../types'
+import type { StoredSent } from './compose'
 
 /**
  * Demo persistence in localStorage. Every access is guarded: private windows or
@@ -24,6 +25,8 @@ export interface StoredState {
   highlightsHiddenOn?: string
   /** Promotional sender addresses the user unsubscribed from (demo only). */
   unsubscribed?: string[]
+  /** Messages "sent" from Compose. They never leave the browser. */
+  sent?: StoredSent[]
 }
 
 /** Today's local date as YYYY-MM-DD. */

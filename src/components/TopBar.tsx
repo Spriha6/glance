@@ -1,5 +1,5 @@
 import type { Ref } from 'react'
-import { APP_NAME } from '../lib/brand'
+import { APP_NAME, DEMO_USER } from '../lib/brand'
 import { Avatar } from './Avatar'
 import { LogoMark } from './Brand'
 import { Icon } from './Icon'
@@ -56,8 +56,8 @@ export function TopBar({ query, onQueryChange, onToggleNav, navExpanded, onOpenS
         >
           <Icon name="settings" size={20} />
         </button>
-        <button type="button" className="profile-button" aria-label="Spriha Sahni (demo account)" title="Spriha Sahni · demo account">
-          <Avatar name="Spriha Sahni" size="sm" />
+        <button type="button" className="profile-button" aria-label={`${DEMO_USER.name} (demo account)`} title={`${DEMO_USER.name} · demo account`}>
+          <Avatar name={DEMO_USER.name} size="sm" />
         </button>
       </div>
     </header>
