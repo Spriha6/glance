@@ -494,7 +494,8 @@ export default function App() {
             isFiltered={isFiltered}
             inArchive={view === 'archive'}
             tabs={
-              view === 'promotions' ? undefined : (
+              // Priority tabs only make sense for mail people send you.
+              view === 'promotions' || view === 'sent' ? undefined : (
                 <PriorityFilters value={priority} counts={priorityCounts} onChange={setPriority} />
               )
             }
@@ -572,7 +573,7 @@ export default function App() {
         />
       )}
 
-      {isMobile && !composeOpen && (
+      {isMobile && !composeOpen && !selectedEmail && (
         <button type="button" className="button compose-fab" onClick={() => openCompose()}>
           <Icon name="pencil" size={20} />
           Compose

@@ -52,7 +52,13 @@ export function EmailDetail({
   onCompose,
 }: EmailDetailProps) {
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const emailId = email?.id
+
+  // Each newly opened email starts at the top, not at the last one's scroll position.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 })
+  }, [emailId])
 
   // In drawer mode, move focus into the panel when an email opens.
   useEffect(() => {
@@ -83,7 +89,7 @@ export function EmailDetail({
             </button>
           </div>
 
-          <div className="detail__scroll">
+          <div ref={scrollRef} className="detail__scroll">
             <header className="detail__header">
               <div className="detail__badges">
                 <PriorityBadge priority={email.priority} />

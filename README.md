@@ -41,6 +41,10 @@ Your choices, to-dos and drafts are saved in your browser, so the demo picks up 
 
 ![Inbox with compact rows, priority dots and the email detail panel](docs/screenshots/inbox.png)
 
+| Promotions | Compose |
+| --- | --- |
+| ![Manage subscriptions with unsubscribe suggestions](docs/screenshots/promotions.png) | ![Compose window with a new message](docs/screenshots/compose.png) |
+
 ## Built with
 
 - **React 19 + TypeScript**, built with **Vite**
