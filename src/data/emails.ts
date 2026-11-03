@@ -61,6 +61,9 @@ export const initialEmails: Email[] = [
       'Weigh in on cutting the competitive slide to one page',
     ],
     deadline: { label: 'Launch review slides', due: deckDue },
+    asksYou: 'Can the competitive slide be cut to one page?',
+    suggestedReply:
+      'Hi Priya,\n\nThanks for the heads-up. I’ll send the pricing rationale and onboarding metrics slides by tomorrow at 5 PM — I’ll label the activation numbers as estimates if they aren’t final.\n\nCutting the competitive slide to one page works for me.\n\nBest,',
   }),
   createEmail({
     id: 'ci-failure',
@@ -96,6 +99,7 @@ export const initialEmails: Email[] = [
       'Alicia needs your interview scorecard for Sam Chen by noon tomorrow so the team can decide at the hiring sync. You’re the last interviewer to submit; feedback so far is positive.',
     actionItems: ['Submit your scorecard for Sam Chen'],
     deadline: { label: 'Interview scorecard', due: scorecardDue },
+    asksYou: 'Can you submit your scorecard by noon tomorrow?',
   }),
   createEmail({
     id: 'newsletter-onboarding',
@@ -134,6 +138,8 @@ export const initialEmails: Email[] = [
       'Review the revised indemnification language in section 9.2',
     ],
     deadline: { label: 'Lumen Health contract response', due: contractDue },
+    asksYou: 'Do Net-45 terms and the new section 9.2 language work?',
+    suggestedReply: `Hi Jordan,\n\nThanks for the quick turnaround. I’m reviewing both points and will confirm on Net-45 and the section 9.2 language by ${weekday(contractDue)} end of day.\n\nBest,`,
   }),
   createEmail({
     id: 'flight-checkin',
@@ -185,6 +191,8 @@ export const initialEmails: Email[] = [
     category: 'work',
     summary: `Elena needs to move ${weekday(critDate)}’s 2 PM design crit. She’s offering 3:30 PM, 4 PM, or the next morning before 11.`,
     actionItems: ['Reply to Elena with a new crit time'],
+    asksYou: 'Would 3:30 or 4 PM work for you?',
+    suggestedReply: 'Hi Elena,\n\nNo problem — 3:30 PM works for me. See you then.\n\nThanks,',
   }),
   createEmail({
     id: 'one-on-one',
@@ -201,6 +209,7 @@ export const initialEmails: Email[] = [
     summary:
       'Ben shared an agenda doc for tomorrow’s 1:1 covering Q4 priorities and the new review process. He’s asking you to add your own topics.',
     actionItems: ['Add your topics to the 1:1 agenda doc'],
+    suggestedReply: 'Hi Ben,\n\nThanks for starting the doc. I’ll add my topics before we meet.\n\nSee you tomorrow,',
   }),
   createEmail({
     id: 'dinner',
@@ -217,6 +226,8 @@ export const initialEmails: Email[] = [
     category: 'personal',
     summary: 'Maya is hosting pasta night Sunday around 7 PM and wants to know if you can come. She also asked you to bring back her blue serving dish.',
     actionItems: ['RSVP to Maya’s pasta night', 'Bring back the blue serving dish'],
+    asksYou: 'Can you make it to pasta night on Sunday?',
+    suggestedReply: 'Hi Maya,\n\nI’d love to come Sunday — 7 PM is perfect. No food restrictions, and I’ll bring your blue serving dish!\n\nSee you then,',
   }),
   createEmail({
     id: 'water-shutoff',

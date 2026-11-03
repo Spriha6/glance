@@ -1,7 +1,7 @@
 import type { IconName } from '../components/Icon'
-import type { Email, Priority, PriorityFilter, View } from '../types'
+import type { Email, ListView, Priority, PriorityFilter } from '../types'
 
-export const VIEWS: { id: View; label: string; icon: IconName; emptyMessage: string }[] = [
+export const VIEWS: { id: ListView; label: string; icon: IconName; emptyMessage: string }[] = [
   { id: 'inbox', label: 'Inbox', icon: 'inbox', emptyMessage: 'Your inbox is clear. Enjoy the quiet.' },
   { id: 'action', label: 'Action Needed', icon: 'flag', emptyMessage: 'Nothing is waiting on you right now.' },
   { id: 'newsletters', label: 'Newsletters', icon: 'newspaper', emptyMessage: 'No newsletters to read.' },
@@ -17,7 +17,7 @@ export const PRIORITY_FILTERS: { id: PriorityFilter; label: string }[] = [
 
 export const hasPendingActions = (email: Email) => email.actionItems.some((item) => !item.done)
 
-export function matchesView(email: Email, view: View) {
+export function matchesView(email: Email, view: ListView) {
   switch (view) {
     case 'inbox':
       return !email.archived && email.category !== 'newsletter'
@@ -44,8 +44,8 @@ export function matchesQuery(email: Email, query: string) {
 export const sortNewestFirst = (emails: Email[]) =>
   [...emails].sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime())
 
-export function countUnreadByView(emails: Email[]): Record<View, number> {
-  const counts: Record<View, number> = { inbox: 0, action: 0, newsletters: 0, archive: 0 }
+export function countUnreadByView(emails: Email[]): Record<ListView, number> {
+  const counts: Record<ListView, number> = { inbox: 0, action: 0, newsletters: 0, archive: 0 }
   for (const email of emails) {
     if (!email.unread) continue
     for (const { id } of VIEWS) if (matchesView(email, id)) counts[id] += 1

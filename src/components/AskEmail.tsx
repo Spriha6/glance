@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { answerQuestion } from '../lib/assistant'
 import type { Email } from '../types'
+import { AiSpark } from './Brand'
 import { Icon } from './Icon'
 
 const SUGGESTIONS = ['What do I need to do?', 'When is this due?', 'Draft a quick reply']
@@ -41,7 +42,7 @@ export function AskEmail({ email }: { email: Email }) {
   return (
     <section className="ask">
       <label className="section-title" htmlFor={inputId}>
-        <Icon name="sparkle" size={14} />
+        <AiSpark size={14} />
         Ask about this email
       </label>
 
@@ -52,7 +53,7 @@ export function AskEmail({ email }: { email: Email }) {
               <p className="ask__question">{exchange.question}</p>
               <div className="ask__answer">
                 <span className="ask__answer-icon" aria-hidden="true">
-                  <Icon name="sparkle" size={13} />
+                  <AiSpark size={13} />
                 </span>
                 {exchange.answer === undefined ? (
                   <span className="ask__typing" aria-label="Thinking">

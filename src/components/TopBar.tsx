@@ -1,5 +1,7 @@
 import type { Ref } from 'react'
+import { APP_NAME } from '../lib/brand'
 import { Avatar } from './Avatar'
+import { LogoMark } from './Brand'
 import { Icon } from './Icon'
 import { SearchField } from './SearchField'
 
@@ -8,10 +10,12 @@ interface TopBarProps {
   onQueryChange: (value: string) => void
   onToggleNav: () => void
   navExpanded: boolean
+  onOpenSettings: () => void
+  onOpenHelp: () => void
   searchRef?: Ref<HTMLInputElement>
 }
 
-export function TopBar({ query, onQueryChange, onToggleNav, navExpanded, searchRef }: TopBarProps) {
+export function TopBar({ query, onQueryChange, onToggleNav, navExpanded, onOpenSettings, onOpenHelp, searchRef }: TopBarProps) {
   return (
     <header className="topbar">
       <div className="topbar__start">
@@ -26,24 +30,34 @@ export function TopBar({ query, onQueryChange, onToggleNav, navExpanded, searchR
           <Icon name="menu" size={20} />
         </button>
         <span className="brand">
-          <span className="brand__mark" aria-hidden="true">
-            <Icon name="sparkle" size={16} />
-          </span>
-          <span className="brand__name">Inbox AI</span>
+          <LogoMark size={28} />
+          <span className="brand__name">{APP_NAME}</span>
         </span>
       </div>
 
       <SearchField ref={searchRef} value={query} onChange={onQueryChange} />
 
       <div className="topbar__end">
-        <button type="button" className="icon-button icon-button--lg topbar__help" aria-label="Help (coming soon)" title="Help · coming soon" aria-disabled="true">
+        <button
+          type="button"
+          className="icon-button icon-button--lg topbar__help"
+          aria-label={`How ${APP_NAME} works`}
+          title={`How ${APP_NAME} works`}
+          onClick={onOpenHelp}
+        >
           <Icon name="help" size={20} />
         </button>
-        <button type="button" className="icon-button icon-button--lg" aria-label="Settings (coming soon)" title="Settings · coming soon" aria-disabled="true">
+        <button
+          type="button"
+          className="icon-button icon-button--lg"
+          aria-label="Settings"
+          title="Settings"
+          onClick={onOpenSettings}
+        >
           <Icon name="settings" size={20} />
         </button>
-        <button type="button" className="profile-button" aria-label="Demo account" title="Demo account">
-          <Avatar name="Demo User" size="sm" />
+        <button type="button" className="profile-button" aria-label="Spriha Sahni (demo account)" title="Spriha Sahni · demo account">
+          <Avatar name="Spriha Sahni" size="sm" />
         </button>
       </div>
     </header>

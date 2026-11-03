@@ -2,7 +2,7 @@ import { formatTimestamp } from '../lib/format'
 import type { Email } from '../types'
 import { Avatar } from './Avatar'
 import { Icon } from './Icon'
-import { PriorityBadge } from './PriorityBadge'
+import { PriorityDot } from './PriorityBadge'
 
 interface EmailRowProps {
   email: Email
@@ -43,7 +43,7 @@ export function EmailRow({ email, selected, checked, onSelect, onCheck, onToggle
         {email.unread && <span className="visually-hidden">Unread. </span>}
         <span className="email-row__sender">{email.sender.name}</span>
         <span className="email-row__content">
-          <PriorityBadge priority={email.priority} />
+          <PriorityDot priority={email.priority} />
           <span className="email-row__subject">{email.subject}</span>
           <span className="email-row__preview">
             <span className="email-row__sep" aria-hidden="true">

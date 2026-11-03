@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CatchUpCard } from './components/CatchUpCard'
 import { CatchUpDialog } from './components/CatchUpDialog'
 import { EmailDetail } from './components/EmailDetail'
 import { EmailList } from './components/EmailList'
+import { Home } from './components/Home'
+import { Onboarding } from './components/Onboarding'
 import { PriorityFilters } from './components/PriorityFilters'
+import { SettingsDialog } from './components/SettingsDialog'
 import { Sidebar } from './components/Sidebar'
+import { Toast } from './components/Toast'
+import type { ToastMessage } from './components/Toast'
 import { TopBar } from './components/TopBar'
 import { initialEmails } from './data/emails'
 import { useMediaQuery } from './hooks/useMediaQuery'
@@ -12,12 +16,24 @@ import {
   VIEWS,
   countByPriority,
   countUnreadByView,
+  hasPendingActions,
   matchesPriority,
   matchesQuery,
   matchesView,
   sortNewestFirst,
 } from './lib/filters'
-import type { Email, PriorityFilter, View } from './types'
+import { buildHighlights, highlightFor } from './lib/highlights'
+import { peopleFrom } from './lib/preferences'
+import {
+  DEFAULT_PREFERENCES,
+  clearState,
+  loadState,
+  restoreEmails,
+  saveState,
+  serializeEmails,
+  todayKey,
+} from './lib/storage'
+import type { Email, ListView, Preferences, PriorityFilter, ReplyDraft, View } from './types'
 import './App.css'
 
 // Below this width the detail panel becomes a slide-over drawer (keep in sync with App.css).
@@ -25,32 +41,57 @@ const DRAWER_QUERY = '(max-width: 1240px)'
 // Below this width the sidebar becomes an off-canvas menu (keep in sync with App.css).
 const MOBILE_QUERY = '(max-width: 820px)'
 
-function initialSelection() {
-  if (window.matchMedia(DRAWER_QUERY).matches) return null
-  return sortNewestFirst(initialEmails.filter((email) => matchesView(email, 'inbox')))[0]?.id ?? null
-}
-
-function viewFor(email: Email): View {
+function viewFor(email: Email): ListView {
   if (email.archived) return 'archive'
   return email.category === 'newsletter' ? 'newsletters' : 'inbox'
 }
 
 export default function App() {
-  const [emails, setEmails] = useState<Email[]>(initialEmails)
-  const [view, setView] = useState<View>('inbox')
+  const [saved] = useState(loadState)
+  const [emails, setEmails] = useState<Email[]>(() => restoreEmails(initialEmails, saved.emails))
+  const [onboarded, setOnboarded] = useState(saved.onboarded ?? false)
+  const [preferences, setPreferences] = useState<Preferences>(saved.preferences ?? DEFAULT_PREFERENCES)
+  const [todoIds, setTodoIds] = useState<ReadonlySet<string>>(() => new Set(saved.todoIds))
+  const [dismissedIds, setDismissedIds] = useState<ReadonlySet<string>>(() => new Set(saved.dismissedIds))
+  const [drafts, setDrafts] = useState<Record<string, ReplyDraft>>(saved.drafts ?? {})
+  const [highlightsHiddenOn, setHighlightsHiddenOn] = useState(saved.highlightsHiddenOn)
+  const highlightsHidden = highlightsHiddenOn === todayKey()
+
+  // Once today's highlights are put away, the app opens straight to the inbox until tomorrow.
+  const [view, setView] = useState<View>(highlightsHidden ? 'inbox' : 'home')
   const [priority, setPriority] = useState<PriorityFilter>('all')
   const [query, setQuery] = useState('')
-  const [selectedId, setSelectedId] = useState<string | null>(initialSelection)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [replyFocusId, setReplyFocusId] = useState<string | null>(null)
   const [briefingOpen, setBriefingOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [introOpen, setIntroOpen] = useState(!onboarded)
+  const [toast, setToast] = useState<ToastMessage | null>(null)
   const [checkedIds, setCheckedIds] = useState<ReadonlySet<string>>(() => new Set())
-  const [catchUpHidden, setCatchUpHidden] = useState(false)
   const [railCollapsed, setRailCollapsed] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const isDrawer = useMediaQuery(DRAWER_QUERY)
   const isMobile = useMediaQuery(MOBILE_QUERY)
   const searchRef = useRef<HTMLInputElement>(null)
 
-  const viewEmails = useMemo(() => sortNewestFirst(emails.filter((email) => matchesView(email, view))), [emails, view])
+  // Persist preferences and progress so the demo picks up where the user left off.
+  useEffect(() => {
+    saveState({
+      onboarded,
+      preferences,
+      todoIds: [...todoIds],
+      dismissedIds: [...dismissedIds],
+      drafts,
+      emails: serializeEmails(emails),
+      highlightsHiddenOn,
+    })
+  }, [onboarded, preferences, todoIds, dismissedIds, drafts, emails, highlightsHiddenOn])
+
+  const listView: ListView = view === 'home' ? 'inbox' : view
+  const viewEmails = useMemo(
+    () => sortNewestFirst(emails.filter((email) => matchesView(email, listView))),
+    [emails, listView],
+  )
   const searchedEmails = useMemo(() => viewEmails.filter((email) => matchesQuery(email, query)), [viewEmails, query])
   const visibleEmails = useMemo(
     () => searchedEmails.filter((email) => matchesPriority(email, priority)),
@@ -58,11 +99,16 @@ export default function App() {
   )
   const priorityCounts = useMemo(() => countByPriority(searchedEmails), [searchedEmails])
   const unreadCounts = useMemo(() => countUnreadByView(emails), [emails])
+  const highlights = useMemo(() => buildHighlights(emails, preferences, dismissedIds), [emails, preferences, dismissedIds])
+  const people = useMemo(() => peopleFrom(initialEmails), [])
   const selectedEmail = emails.find((email) => email.id === selectedId) ?? null
 
   const unreadTotal = emails.filter((email) => !email.archived && email.unread).length
   const isFiltered = query.trim() !== '' || priority !== 'all'
-  const viewConfig = VIEWS.find((item) => item.id === view) ?? VIEWS[0]
+  const viewConfig = VIEWS.find((item) => item.id === listView) ?? VIEWS[0]
+
+  const showToast = useCallback((text: string, undo?: () => void) => setToast({ id: Date.now(), text, undo }), [])
+  const hideToast = useCallback(() => setToast(null), [])
 
   const updateEmail = useCallback((id: string, update: (email: Email) => Email) => {
     setEmails((current) => current.map((email) => (email.id === id ? update(email) : email)))
@@ -94,7 +140,7 @@ export default function App() {
     const targets = new Set(ids)
     const open = selectedId ? emails.find((item) => item.id === selectedId) : undefined
     // When the open email disappears from the list, move on to the nearest remaining neighbour.
-    if (open && targets.has(open.id) && !matchesView({ ...open, archived }, view)) {
+    if (view !== 'home' && open && targets.has(open.id) && !matchesView({ ...open, archived }, view)) {
       const index = visibleEmails.findIndex((item) => item.id === open.id)
       const remaining = (item: Email) => !targets.has(item.id)
       const next =
@@ -130,6 +176,12 @@ export default function App() {
     setNavOpen(false)
   }
 
+  function changeQuery(next: string) {
+    setQuery(next)
+    // Searching from the daily home jumps to the inbox results.
+    if (view === 'home' && next.trim()) changeView('inbox')
+  }
+
   function toggleNav() {
     if (isMobile) setNavOpen((current) => !current)
     else setRailCollapsed((current) => !current)
@@ -145,42 +197,161 @@ export default function App() {
     setPriority('all')
   }
 
+  function openEmail(id: string) {
+    setReplyFocusId(null)
+    setSelectedId(id)
+  }
+
+  function replyTo(id: string) {
+    setReplyFocusId(id)
+    setSelectedId(id)
+  }
+
   function openFromBriefing(id: string) {
     const email = emails.find((item) => item.id === id)
     if (!email) return
     setView(viewFor(email))
     resetFilters()
-    setSelectedId(id)
+    openEmail(id)
     setBriefingOpen(false)
   }
 
-  // Keyboard shortcuts: "/" focuses search, Escape closes the drawer.
+  // ---- Highlights & to-dos ----
+
+  function addTodo(id: string) {
+    setTodoIds((current) => new Set(current).add(id))
+    showToast('Added to your to-dos', () =>
+      setTodoIds((current) => new Set([...current].filter((item) => item !== id))),
+    )
+  }
+
+  function markDone(id: string) {
+    const before = emails.find((email) => email.id === id)
+    if (!before) return
+    updateEmail(id, (email) => ({
+      ...email,
+      unread: false,
+      actionItems: email.actionItems.map((item) => ({ ...item, done: true })),
+    }))
+    showToast('Marked done', () => updateEmail(id, () => before))
+  }
+
+  function dismissHighlight(id: string) {
+    setDismissedIds((current) => new Set(current).add(id))
+    showToast('Moved to your regular inbox', () =>
+      setDismissedIds((current) => new Set([...current].filter((item) => item !== id))),
+    )
+  }
+
+  function hideHighlights() {
+    setHighlightsHiddenOn(todayKey())
+    changeView('inbox')
+    showToast('Highlights hidden for today', () => {
+      setHighlightsHiddenOn(undefined)
+      changeView('home')
+    })
+  }
+
+  function showHighlights() {
+    setHighlightsHiddenOn(undefined)
+    changeView('home')
+  }
+
+  function clearCompletedTodos() {
+    setTodoIds(
+      (current) =>
+        new Set([...current].filter((id) => emails.find((email) => email.id === id && hasPendingActions(email)))),
+    )
+  }
+
+  function changeDraft(id: string, draft: ReplyDraft) {
+    setDrafts((current) => ({ ...current, [id]: draft }))
+  }
+
+  const todoEmails = [...todoIds]
+    .map((id) => emails.find((email) => email.id === id))
+    .filter((email): email is Email => email !== undefined && !email.archived)
+
+  const attentionIds = new Set(highlights.attention.map((item) => item.email.id))
+  const inboxEmails = emails.filter((email) => matchesView(email, 'inbox'))
+
+  // ---- Onboarding & settings ----
+
+  function finishOnboarding(next: Preferences) {
+    setPreferences(next)
+    setOnboarded(true)
+    setIntroOpen(false)
+    changeView('home')
+  }
+
+  function skipOnboarding() {
+    setOnboarded(true)
+    setIntroOpen(false)
+  }
+
+  function savePreferences(next: Preferences) {
+    setPreferences(next)
+    setSettingsOpen(false)
+    showToast('Preferences saved')
+  }
+
+  function openSettings() {
+    setNavOpen(false)
+    setSettingsOpen(true)
+  }
+
+  function replayIntro() {
+    setSettingsOpen(false)
+    setIntroOpen(true)
+  }
+
+  function resetDemo() {
+    clearState()
+    setEmails(initialEmails)
+    setPreferences(DEFAULT_PREFERENCES)
+    setTodoIds(new Set())
+    setDismissedIds(new Set())
+    setDrafts({})
+    setHighlightsHiddenOn(undefined)
+    setSelectedId(null)
+    setSettingsOpen(false)
+    setOnboarded(false)
+    setIntroOpen(true)
+    changeView('home')
+  }
+
+  const dialogOpen = briefingOpen || settingsOpen || introOpen
+
+  // Keyboard shortcuts: "/" focuses search, Escape closes the menu or drawer.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (dialogOpen) return
       const target = event.target
       const isTyping = target instanceof Element && target.closest('input, textarea, [contenteditable="true"]') !== null
-      if (event.key === '/' && !isTyping && !briefingOpen) {
+      if (event.key === '/' && !isTyping) {
         event.preventDefault()
         searchRef.current?.focus()
       }
-      if (event.key === 'Escape' && !briefingOpen) {
+      if (event.key === 'Escape') {
         if (navOpen) setNavOpen(false)
         else if (isDrawer && selectedId) setSelectedId(null)
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [isDrawer, selectedId, briefingOpen, navOpen])
+  }, [isDrawer, selectedId, dialogOpen, navOpen])
 
-  const showCatchUp = view === 'inbox' && !isFiltered && !catchUpHidden
+  const appClass = ['app', railCollapsed && 'is-rail-collapsed', !selectedEmail && 'no-detail'].filter(Boolean).join(' ')
 
   return (
-    <div className={`app${railCollapsed ? ' is-rail-collapsed' : ''}`}>
+    <div className={appClass}>
       <TopBar
         query={query}
-        onQueryChange={setQuery}
+        onQueryChange={changeQuery}
         onToggleNav={toggleNav}
         navExpanded={isMobile ? navOpen : !railCollapsed}
+        onOpenSettings={openSettings}
+        onOpenHelp={() => setIntroOpen(true)}
         searchRef={searchRef}
       />
 
@@ -192,39 +363,56 @@ export default function App() {
         open={navOpen}
         onSelectView={changeView}
         onCatchUp={openBriefing}
+        onOpenSettings={openSettings}
       />
       <div className={`nav-backdrop${isMobile && navOpen ? ' is-open' : ''}`} onClick={() => setNavOpen(false)} aria-hidden="true" />
 
       <main className="main">
-        <EmailList
-          title={viewConfig.label}
-          emails={visibleEmails}
-          selectedId={selectedId}
-          checkedIds={checkedIds}
-          query={query}
-          emptyMessage={viewConfig.emptyMessage}
-          isFiltered={isFiltered}
-          inArchive={view === 'archive'}
-          tabs={<PriorityFilters value={priority} counts={priorityCounts} onChange={setPriority} />}
-          banner={
-            showCatchUp && (
-              <CatchUpCard
-                emails={emails}
-                onOpenBriefing={openBriefing}
-                onOpenEmail={openFromBriefing}
-                onDismiss={() => setCatchUpHidden(true)}
-              />
-            )
-          }
-          onSelect={setSelectedId}
-          onCheck={checkEmail}
-          onCheckAll={checkAll}
-          onToggleRead={toggleRead}
-          onToggleArchive={toggleArchive}
-          onSetUnread={setUnread}
-          onSetArchived={setArchived}
-          onResetFilters={resetFilters}
-        />
+        {view === 'home' ? (
+          <Home
+            highlights={highlights}
+            highlightsHidden={highlightsHidden}
+            onHideHighlights={hideHighlights}
+            onShowHighlights={showHighlights}
+            todoEmails={todoEmails}
+            todoIds={todoIds}
+            newCount={unreadTotal}
+            otherNewCount={
+              inboxEmails.filter((email) => email.unread && (highlightsHidden || !attentionIds.has(email.id))).length
+            }
+            inboxCount={inboxEmails.length}
+            newsletterUnread={unreadCounts.newsletters}
+            actionCount={emails.filter((email) => matchesView(email, 'action')).length}
+            onOpen={openEmail}
+            onReply={replyTo}
+            onAddTodo={addTodo}
+            onDone={markDone}
+            onDismiss={dismissHighlight}
+            onToggleTask={toggleTask}
+            onClearCompleted={clearCompletedTodos}
+            onBrowse={changeView}
+          />
+        ) : (
+          <EmailList
+            title={viewConfig.label}
+            emails={visibleEmails}
+            selectedId={selectedId}
+            checkedIds={checkedIds}
+            query={query}
+            emptyMessage={viewConfig.emptyMessage}
+            isFiltered={isFiltered}
+            inArchive={view === 'archive'}
+            tabs={<PriorityFilters value={priority} counts={priorityCounts} onChange={setPriority} />}
+            onSelect={openEmail}
+            onCheck={checkEmail}
+            onCheckAll={checkAll}
+            onToggleRead={toggleRead}
+            onToggleArchive={toggleArchive}
+            onSetUnread={setUnread}
+            onSetArchived={setArchived}
+            onResetFilters={resetFilters}
+          />
+        )}
       </main>
 
       <div
@@ -240,6 +428,13 @@ export default function App() {
         onToggleRead={toggleRead}
         onToggleArchive={toggleArchive}
         onToggleTask={toggleTask}
+        highlight={selectedId ? highlightFor(highlights, selectedId) : undefined}
+        onTodo={selectedId !== null && todoIds.has(selectedId)}
+        draft={selectedId ? drafts[selectedId] : undefined}
+        focusReply={selectedId !== null && replyFocusId === selectedId}
+        onAddTodo={addTodo}
+        onDismissHighlight={dismissHighlight}
+        onDraftChange={changeDraft}
       />
 
       <CatchUpDialog
@@ -249,6 +444,27 @@ export default function App() {
         onOpenEmail={openFromBriefing}
         onMarkRead={markRead}
       />
+
+      <SettingsDialog
+        open={settingsOpen}
+        people={people}
+        preferences={preferences}
+        onSave={savePreferences}
+        onClose={() => setSettingsOpen(false)}
+        onReplayIntro={replayIntro}
+        onResetDemo={resetDemo}
+      />
+
+      {introOpen && (
+        <Onboarding
+          people={people}
+          initialPreferences={preferences}
+          onFinish={finishOnboarding}
+          onSkip={skipOnboarding}
+        />
+      )}
+
+      <Toast toast={toast} onDismiss={hideToast} />
     </div>
   )
 }

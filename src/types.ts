@@ -2,7 +2,11 @@ export type Priority = 'urgent' | 'important' | 'normal'
 
 export type Category = 'work' | 'personal' | 'updates' | 'newsletter'
 
-export type View = 'inbox' | 'action' | 'newsletters' | 'archive'
+/** Mailbox lists in the sidebar. */
+export type ListView = 'inbox' | 'action' | 'newsletters' | 'archive'
+
+/** Everything the main area can show: the daily home or a mailbox list. */
+export type View = 'home' | ListView
 
 export type PriorityFilter = 'all' | Priority
 
@@ -37,4 +41,22 @@ export interface Email {
   summary: string
   actionItems: ActionItem[]
   deadline?: Deadline
+  /** A direct question the sender asked you, if any. */
+  asksYou?: string
+  /** Mock AI-suggested reply. Never sent — the user edits and approves it. */
+  suggestedReply?: string
+}
+
+/** What the user told onboarding matters most. */
+export type FocusArea = 'deadlines' | 'work' | 'people' | 'personal'
+
+export interface Preferences {
+  focus: FocusArea[]
+  /** Sender email addresses the user marked as important. */
+  importantSenders: string[]
+}
+
+export interface ReplyDraft {
+  text: string
+  approved: boolean
 }

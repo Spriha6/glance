@@ -4,6 +4,7 @@ import { buildBriefing } from '../lib/briefing'
 import { formatDue, formatLongDate, formatTimestamp, isDueSoon } from '../lib/format'
 import type { Email } from '../types'
 import { Avatar } from './Avatar'
+import { AiSpark } from './Brand'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
 
@@ -41,7 +42,7 @@ export function CatchUpDialog({ open, emails, onClose, onOpenEmail, onMarkRead }
       <div className="briefing__inner">
         <header className="briefing__header">
           <p className="briefing__eyebrow">
-            <Icon name="sparkle" size={14} />
+            <AiSpark size={14} />
             Your briefing · {formatLongDate()}
           </p>
           <h2 id="briefing-title" className="briefing__title">

@@ -1,24 +1,35 @@
 import { VIEWS } from '../lib/filters'
-import type { View } from '../types'
+import type { ListView, View } from '../types'
+import { AiSpark } from './Brand'
 import { Icon } from './Icon'
 
 interface SidebarProps {
   activeView: View
-  unreadCounts: Record<View, number>
+  unreadCounts: Record<ListView, number>
   unreadTotal: number
   collapsed: boolean
   open: boolean
   onSelectView: (view: View) => void
   onCatchUp: () => void
+  onOpenSettings: () => void
 }
 
-export function Sidebar({ activeView, unreadCounts, unreadTotal, collapsed, open, onSelectView, onCatchUp }: SidebarProps) {
+export function Sidebar({
+  activeView,
+  unreadCounts,
+  unreadTotal,
+  collapsed,
+  open,
+  onSelectView,
+  onCatchUp,
+  onOpenSettings,
+}: SidebarProps) {
   const className = ['sidebar', collapsed && 'is-collapsed', open && 'is-open'].filter(Boolean).join(' ')
 
   return (
     <aside id="sidebar" className={className}>
       <button type="button" className="button button--primary button--pill catch-up-button" onClick={onCatchUp}>
-        <Icon name="sparkle" size={18} />
+        <AiSpark size={20} />
         <span className="catch-up-button__label">Catch me up</span>
         {unreadTotal > 0 && (
           <span className="button__badge">
@@ -30,6 +41,18 @@ export function Sidebar({ activeView, unreadCounts, unreadTotal, collapsed, open
 
       <nav className="nav" aria-label="Mailboxes">
         <ul className="nav__list">
+          <li>
+            <button
+              type="button"
+              className="nav__item"
+              aria-current={activeView === 'home' ? 'page' : undefined}
+              onClick={() => onSelectView('home')}
+              title={collapsed ? 'Today' : undefined}
+            >
+              <Icon name="today" className="nav__icon" size={20} />
+              <span className="nav__text">Today</span>
+            </button>
+          </li>
           {VIEWS.map((view) => {
             const count = unreadCounts[view.id]
             return (
@@ -57,10 +80,9 @@ export function Sidebar({ activeView, unreadCounts, unreadTotal, collapsed, open
 
         <ul className="nav__list nav__list--secondary">
           <li>
-            <button type="button" className="nav__item" aria-disabled="true" title="Settings · coming soon">
+            <button type="button" className="nav__item" onClick={onOpenSettings} title={collapsed ? 'Settings' : undefined}>
               <Icon name="settings" className="nav__icon" size={20} />
               <span className="nav__text">Settings</span>
-              <span className="nav__soon">Soon</span>
             </button>
           </li>
         </ul>

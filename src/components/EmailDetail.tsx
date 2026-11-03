@@ -1,10 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { formatDue, formatFullDate, isDueSoon } from '../lib/format'
-import type { Email } from '../types'
+import type { Highlight } from '../lib/highlights'
+import type { Email, ReplyDraft } from '../types'
 import { AskEmail } from './AskEmail'
 import { Avatar } from './Avatar'
+import { AiSpark } from './Brand'
 import { Icon } from './Icon'
 import { PriorityBadge } from './PriorityBadge'
+import { ReplyDraftEditor } from './ReplyDraftEditor'
 
 interface EmailDetailProps {
   email: Email | null
@@ -13,16 +16,39 @@ interface EmailDetailProps {
   onToggleRead: (id: string) => void
   onToggleArchive: (id: string) => void
   onToggleTask: (emailId: string, taskId: string) => void
+  highlight?: Highlight
+  onTodo: boolean
+  draft: ReplyDraft | undefined
+  focusReply: boolean
+  onAddTodo: (id: string) => void
+  onDismissHighlight: (id: string) => void
+  onDraftChange: (id: string, draft: ReplyDraft) => void
 }
 
-export function EmailDetail({ email, isDrawer, onClose, onToggleRead, onToggleArchive, onToggleTask }: EmailDetailProps) {
+export function EmailDetail({
+  email,
+  isDrawer,
+  onClose,
+  onToggleRead,
+  onToggleArchive,
+  onToggleTask,
+  highlight,
+  onTodo,
+  draft,
+  focusReply,
+  onAddTodo,
+  onDismissHighlight,
+  onDraftChange,
+}: EmailDetailProps) {
   const headingRef = useRef<HTMLHeadingElement>(null)
   const emailId = email?.id
 
   // In drawer mode, move focus into the panel when an email opens.
   useEffect(() => {
-    if (isDrawer && emailId) headingRef.current?.focus()
-  }, [isDrawer, emailId])
+    if (isDrawer && emailId && !focusReply) headingRef.current?.focus()
+  }, [isDrawer, emailId, focusReply])
+
+  const hasOpenTasks = email?.actionItems.some((item) => !item.done) ?? false
 
   return (
     <aside className={`detail${email ? ' is-open' : ''}`} aria-label="Email details">
@@ -70,9 +96,21 @@ export function EmailDetail({ email, isDrawer, onClose, onToggleRead, onToggleAr
               </div>
             </header>
 
+            {highlight && (
+              <p className="why-note">
+                <AiSpark size={14} />
+                <span>
+                  <strong>Highlighted:</strong> {highlight.reasons.map((reason) => reason.label).join(' · ')}
+                </span>
+                <button type="button" className="why-note__dismiss" onClick={() => onDismissHighlight(email.id)}>
+                  Not now
+                </button>
+              </p>
+            )}
+
             <section className="summary" aria-labelledby="summary-title">
               <h3 id="summary-title" className="section-title section-title--accent">
-                <Icon name="sparkle" size={14} />
+                <AiSpark size={14} />
                 Summary
                 <span className="summary__tag">AI · demo</span>
               </h3>
@@ -89,7 +127,7 @@ export function EmailDetail({ email, isDrawer, onClose, onToggleRead, onToggleAr
 
             <section aria-labelledby="tasks-title">
               <h3 id="tasks-title" className="section-title">
-                Action items
+                Suggested next steps
                 {email.actionItems.length > 0 && (
                   <span className="section-title__meta">
                     {email.actionItems.filter((item) => item.done).length}/{email.actionItems.length} done
@@ -110,7 +148,29 @@ export function EmailDetail({ email, isDrawer, onClose, onToggleRead, onToggleAr
               ) : (
                 <p className="muted-note">Nothing to do — this one is just for your information.</p>
               )}
+              {hasOpenTasks &&
+                (onTodo ? (
+                  <p className="todo-note">
+                    <Icon name="check" size={14} />
+                    On your to-do list
+                  </p>
+                ) : (
+                  <button type="button" className="button button--sm tasks__add" onClick={() => onAddTodo(email.id)}>
+                    <Icon name="listPlus" size={15} />
+                    Add to to-do
+                  </button>
+                ))}
             </section>
+
+            {email.suggestedReply && (
+              <ReplyDraftEditor
+                key={`reply-${email.id}`}
+                email={{ ...email, suggestedReply: email.suggestedReply }}
+                draft={draft}
+                autoFocus={focusReply}
+                onChange={(next) => onDraftChange(email.id, next)}
+              />
+            )}
 
             <AskEmail key={email.id} email={email} />
 
